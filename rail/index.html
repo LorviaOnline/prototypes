@@ -23,16 +23,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-
 .card.fly-r{transition:transform .35s ease,opacity .35s;transform:translate(140%,-20%) rotate(14deg)!important;opacity:0!important}
 .card.fly-l{transition:transform .35s ease,opacity .35s;transform:translate(-140%,-10%) rotate(-14deg)!important;opacity:0!important}
 .card.fly-u{transition:transform .4s ease,opacity .4s;transform:translate(0,-140%) scale(.9)!important;opacity:0!important}
-.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.badge{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+.badge{font-size:11px;font-weight:600;letter-spacing:.02em;padding:4px 10px;border-radius:999px;border:1px solid}
+.badge.status-badge{text-transform:uppercase;letter-spacing:.05em}
 .high{color:var(--high);border-color:var(--high);background:rgba(76,175,122,.12)}
 .maybe{color:var(--maybe);border-color:var(--maybe);background:rgba(201,162,39,.12)}
 .low{color:var(--low);border-color:var(--low);background:rgba(138,133,128,.12)}
-.type{color:var(--text);border-color:var(--border);background:rgba(255,255,255,.04)}
+.conf-hint{font-size:11px;color:var(--muted);margin:-2px 0 12px;line-height:1.35}
 .queued{color:var(--glow);border-color:var(--mana);background:rgba(107,92,255,.12)}
 .hydrating{color:#7ec8e3;border-color:#7ec8e3;background:rgba(126,200,227,.12)}
 .ready{color:var(--high);border-color:var(--high);background:rgba(76,175,122,.12)}
-h2{font-size:clamp(24px,5vw,32px);font-weight:650;margin-bottom:10px}
+h2{font-size:clamp(24px,5vw,32px);font-weight:650;margin-bottom:8px}
+.type-wrap{position:relative;display:inline-block;margin-bottom:12px;z-index:8}
+.type-chip{font:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;display:inline-flex;align-items:center;gap:6px}
+.type-chip:after{content:'▾';font-size:10px;opacity:.7}
+.type-chip.open{border-color:var(--gold);background:rgba(201,162,39,.12)}
+.type-flyout{display:none;position:absolute;left:0;top:calc(100% + 6px);min-width:180px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.55);padding:6px;z-index:40}
+.type-flyout.on{display:block}
+.type-flyout button{display:block;width:100%;text-align:left;font:inherit;font-size:13px;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.type-flyout button:hover,.type-flyout button:active{background:rgba(255,255,255,.06)}
+.type-flyout button.cur{color:var(--gold);font-weight:600}
+.type-flyout button.cur:after{content:' ✓';float:right;opacity:.8}
 .overview{color:var(--muted);font-size:14px;line-height:1.5;flex:1}
 .meta{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
 .actions{margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
@@ -56,10 +67,10 @@ h2{font-size:clamp(24px,5vw,32px);font-weight:650;margin-bottom:10px}
 .mana-card .cost{font-size:28px;font-weight:700;margin-bottom:4px}
 .mana-card .cost span{color:var(--glow)}
 .mana-card .sub{font-size:11px;color:var(--muted);margin-bottom:18px}
-.swipe-tag{position:absolute;top:28%;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;border-radius:8px;border:2px solid;opacity:0;pointer-events:none;z-index:5;transition:opacity .1s}
-.swipe-tag.L{left:10px;color:#e8a0a0;border-color:var(--reject);transform:rotate(-12deg);background:rgba(180,74,74,.2)}
-.swipe-tag.R{right:10px;color:#9ed9b8;border-color:var(--accept);transform:rotate(12deg);background:rgba(61,155,106,.2)}
-.swipe-tag.U{top:14px;left:50%;transform:translateX(-50%);color:var(--glow);border-color:var(--mana);background:rgba(107,92,255,.25)}
+.swipe-tag{position:absolute;top:14px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;border-radius:8px;border:2px solid;opacity:0;pointer-events:none;z-index:5;transition:opacity .1s}
+.swipe-tag.L{left:12px;color:#e8a0a0;border-color:var(--reject);transform:rotate(-12deg);background:rgba(180,74,74,.2)}
+.swipe-tag.R{right:12px;color:#9ed9b8;border-color:var(--accept);transform:rotate(12deg);background:rgba(61,155,106,.2)}
+.swipe-tag.U{left:50%;transform:translateX(-50%);color:var(--glow);border-color:var(--mana);background:rgba(107,92,255,.25)}
 body.shot .chrome .tabs,body.shot .toast,body.shot .hint{display:none!important}
 body.shot-mana .overlay{display:flex!important}
 body.shot-hints .swipe-tag.L{opacity:.9!important}
@@ -140,22 +151,41 @@ const RAIL0=[
   {id:39,name:'Amphail Stables',type:'Place',tier:'low',score:'0.22',blurb:'Town far north of Waterdeep; only named in a travel tale.',meta:'Session 9',cost:8},
   {id:40,name:'Nihiloor',type:'Character',tier:'low',score:'0.45',blurb:'Illithid name hissed by a dying thrall; identity unverified.',meta:'Session 12',cost:15}
 ];
-let rail=RAIL0.map(x=>({...x})), queue=[], undo=null, mana=2400, view='rail', drag=null, busy=false;
-function resetDemo(){rail=RAIL0.map(x=>({...x}));queue=[];undo=null;mana=2400;busy=false;hideMana();setView('rail');toast(`Reset · ${rail.length} names`);}
+let rail=RAIL0.map(x=>({...x})), queue=[], undo=null, mana=2400, view='rail', drag=null, busy=false, typeOpen=false;
+const TYPES=['Character','Place','Faction','Item','Creature','Event','Deity','Organization'];
+function resetDemo(){rail=RAIL0.map(x=>({...x}));queue=[];undo=null;mana=2400;busy=false;typeOpen=false;hideMana();setView('rail');toast(`Reset · ${rail.length} names`);}
 
 const $=id=>document.getElementById(id);
 const tierClass=t=>t==='high'?'high':t==='maybe'?'maybe':'low';
-const tierLabel=c=>c.tier==='high'?`High · ${c.score}`:c.tier==='maybe'?`Maybe · ${c.score}`:`Low · ${c.score}`;
+function pct(score){const n=parseFloat(score);return Number.isFinite(n)?Math.round(n*100):score}
+function tierLabel(c){
+  const p=pct(c.score);
+  if(c.tier==='high') return `Likely new lore · ${p}% sure`;
+  if(c.tier==='maybe') return `Maybe lore · ${p}% sure`;
+  return `Probably noise · ${p}% sure`;
+}
+const CONF_HINT='How sure the importer is this is a real, new lore name.';
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2200)}
 function counts(){$('rail-n').textContent=rail.length?` · ${rail.length}`:'';$('queue-n').textContent=queue.length?` · ${queue.length}`:''}
 function setView(v){view=v;$('tab-rail').classList.toggle('on',v==='rail');$('tab-queue').classList.toggle('on',v==='queue');render()}
 
-function cardEl(c,cls,extra=''){
-  const st=c.status?`<span class="badge ${c.status}">${c.status}</span>`:`<span class="badge ${tierClass(c.tier)}">${tierLabel(c)}</span>`;
+function cardEl(c,cls,extra='',interactive=false){
+  const st=c.status
+    ?`<span class="badge status-badge ${c.status}">${c.status}</span>`
+    :`<span class="badge ${tierClass(c.tier)}" title="${CONF_HINT}">${tierLabel(c)}</span>`;
+  const confLine=c.status?'':`<div class="conf-hint">${CONF_HINT}</div>`;
+  const typeBlock=interactive
+    ?`<div class="type-wrap" id="type-wrap">
+        <button type="button" class="type-chip" id="type-chip" aria-haspopup="listbox" aria-expanded="false">${c.type}</button>
+        <div class="type-flyout" id="type-flyout" role="listbox">${TYPES.map(t=>`<button type="button" role="option" data-type="${t}" class="${t===c.type?'cur':''}">${t}</button>`).join('')}</div>
+      </div>`
+    :`<div class="type-wrap"><span class="type-chip" style="cursor:default;pointer-events:none">${c.type}</span></div>`;
   return `<div class="card ${cls}" data-id="${c.id}">${extra}
-    <div class="badges">${st}<span class="badge type">${c.type}</span></div>
-    <h2>${c.name}</h2><p class="overview">${c.blurb||'Name + type only. No field values until hydrated.'}</p>
+    <div class="badges">${st}</div>${confLine}
+    <h2>${c.name}</h2>
+    ${typeBlock}
+    <p class="overview">${c.blurb||'Name + type only. No field values until hydrated.'}</p>
     <div class="meta"><span>${c.meta||'Accepted from rail'}</span><span>${view==='rail'?'Accept → queue':(c.status||'queued')}</span></div></div>`;
 }
 
@@ -168,7 +198,7 @@ function render(){
   const tags=view==='rail'
     ?`<div class="swipe-tag L" id="tagL">← Reject</div><div class="swipe-tag R" id="tagR">Accept →</div>`
     :`<div class="swipe-tag U" id="tagU">↑ Spend mana</div>`;
-  deck.innerHTML=(list[2]?cardEl(list[2],'peek'):'')+(peek?cardEl(peek,'peek'):'')+cardEl(top,'top',tags);
+  deck.innerHTML=(list[2]?cardEl(list[2],'peek'):'')+(peek?cardEl(peek,'peek'):'')+cardEl(top,'top',tags,true);
   const peeks=deck.querySelectorAll('.card.peek');
   if(peeks[0]){peeks[0].style.transform='translate(-22px,12px) scale(.96)';peeks[0].style.opacity='.42';}
   if(peeks[1]){peeks[1].style.transform='translate(22px,12px) scale(.97)';}
@@ -189,10 +219,53 @@ function wireBtns(){
   $('btn-rej')?.addEventListener('click',()=>decide('reject'));
   $('btn-mana')?.addEventListener('click',()=>askMana());
   $('undo-btn')?.addEventListener('click',()=>doUndo());
+  wireType();
+}
+
+function closeTypeFlyout(){
+  typeOpen=false;
+  const chip=$('type-chip'), fly=$('type-flyout');
+  if(chip){chip.classList.remove('open');chip.setAttribute('aria-expanded','false');}
+  if(fly) fly.classList.remove('on');
+}
+function openTypeFlyout(){
+  typeOpen=true;
+  const chip=$('type-chip'), fly=$('type-flyout');
+  if(chip){chip.classList.add('open');chip.setAttribute('aria-expanded','true');}
+  if(fly) fly.classList.add('on');
+}
+function setCardType(newType){
+  const list=view==='rail'?rail:queue;
+  if(!list[0])return;
+  list[0]={...list[0],type:newType};
+  closeTypeFlyout();
+  toast(`Type → ${newType}`);
+  render();
+}
+function wireType(){
+  const chip=$('type-chip'), fly=$('type-flyout'), wrap=$('type-wrap');
+  if(!chip||!fly)return;
+  const stop=e=>{e.stopPropagation();e.preventDefault();};
+  // Prevent swipe/drag starting on the type control
+  ['pointerdown','touchstart','mousedown'].forEach(ev=>{
+    wrap.addEventListener(ev,e=>{e.stopPropagation();}, {passive:false});
+    chip.addEventListener(ev,e=>{e.stopPropagation();}, {passive:false});
+    fly.addEventListener(ev,e=>{e.stopPropagation();}, {passive:false});
+  });
+  chip.addEventListener('click',e=>{
+    e.preventDefault();e.stopPropagation();
+    if(typeOpen) closeTypeFlyout(); else openTypeFlyout();
+  });
+  fly.querySelectorAll('button[data-type]').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();
+      setCardType(btn.getAttribute('data-type'));
+    });
+  });
 }
 
 function decide(kind){
-  if(busy||view!=='rail'||!rail[0])return;
+  if(busy||typeOpen||view!=='rail'||!rail[0])return;
   busy=true;const c=rail[0], el=document.querySelector('.card.top');
   el?.classList.add(kind==='accept'?'fly-r':'fly-l');
   setTimeout(()=>{
@@ -204,7 +277,7 @@ function decide(kind){
 }
 
 function askMana(){
-  if(busy||view!=='queue'||!queue[0]||queue[0].status!=='queued')return;
+  if(busy||typeOpen||view!=='queue'||!queue[0]||queue[0].status!=='queued')return;
   const c=queue[0];$('mana-copy').innerHTML=`Hydrate <b style="color:var(--text)">${c.name}</b> into a full lore card. Burns real OpenAI cost.`;
   $('mana-cost').textContent=c.cost||12;$('mana-bal').textContent=mana-(c.cost||12);
   $('overlay').classList.add('on');
@@ -231,13 +304,21 @@ function doUndo(){
 
 function wireDrag(){
   const el=document.querySelector('.card.top');if(!el)return;
-  const start=e=>{if(busy)return;const p=e.touches?e.touches[0]:e;drag={x0:p.clientX,y0:p.clientY,x:0,y:0};};
-  const move=e=>{if(!drag)return;const p=e.touches?e.touches[0]:e;drag.x=p.clientX-drag.x0;drag.y=p.clientY-drag.y0;
+  const fromType=t=>t&&(t.closest&&(t.closest('.type-wrap')||t.closest('.type-flyout')));
+  const start=e=>{
+    if(busy||typeOpen)return;
+    const tgt=e.target;
+    if(fromType(tgt))return;
+    const p=e.touches?e.touches[0]:e;
+    drag={x0:p.clientX,y0:p.clientY,x:0,y:0};
+  };
+  const move=e=>{if(!drag||typeOpen)return;const p=e.touches?e.touches[0]:e;drag.x=p.clientX-drag.x0;drag.y=p.clientY-drag.y0;
     if(view==='rail'){el.style.transform=`translate(${drag.x}px,${drag.y*0.2}px) rotate(${drag.x*0.04}deg)`;
       const L=$('tagL'),R=$('tagR');if(L)L.style.opacity=drag.x<-40?Math.min(1,(-drag.x-40)/80):0;if(R)R.style.opacity=drag.x>40?Math.min(1,(drag.x-40)/80):0;}
     else{el.style.transform=`translate(0,${Math.min(0,drag.y)}px)`;const U=$('tagU');if(U)U.style.opacity=drag.y<-40?Math.min(1,(-drag.y-40)/80):0;}};
   const end=()=>{if(!drag)return;const {x,y}=drag;drag=null;el.style.transform='';
     document.querySelectorAll('.swipe-tag').forEach(t=>t.style.opacity=0);
+    if(typeOpen)return;
     if(view==='rail'){if(x>90)decide('accept');else if(x<-90)decide('reject');}
     else if(y<-90)askMana();};
   el.addEventListener('pointerdown',start);window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);
@@ -249,7 +330,17 @@ $('tab-queue').onclick=()=>setView('queue');
 $('reset-demo').onclick=()=>resetDemo();
 $('mana-cancel').onclick=hideMana;
 $('mana-ok').onclick=confirmMana;
+document.addEventListener('pointerdown',e=>{
+  if(!typeOpen)return;
+  const wrap=$('type-wrap');
+  if(wrap&&!wrap.contains(e.target)) closeTypeFlyout();
+}, true);
 window.addEventListener('keydown',e=>{
+  if(typeOpen){
+    if(e.key==='Escape'){closeTypeFlyout();return;}
+    // Ignore A/R/M (and other deck shortcuts) while the type flyout is open
+    return;
+  }
   if($('overlay').classList.contains('on')){if(e.key==='Escape')hideMana();if(e.key==='Enter')confirmMana();return;}
   const k=e.key.toLowerCase();
   if(k==='a')decide('accept');else if(k==='r')decide('reject');else if(k==='m')askMana();else if(k==='u')doUndo();
