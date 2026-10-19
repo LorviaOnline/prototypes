@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Lorvia · Rail + Queue prototype</title>
+<style>
+:root{--bg:#0f1117;--panel:#1a1d27;--panel2:#222633;--border:#2e3345;--text:#e8e6e1;--muted:#9a958c;--gold:#c9a227;--accept:#3d9b6a;--reject:#b44a4a;--mana:#6b5cff;--glow:#a594ff;--high:#4caf7a;--maybe:#c9a227;--low:#8a8580}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;overflow:hidden;touch-action:none}
+.chrome{height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--border);font-size:13px}
+.brand{color:var(--gold);font-weight:700;letter-spacing:.06em}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{padding:6px 12px;border-radius:8px;border:1px solid transparent;color:var(--muted);cursor:pointer;background:transparent;font:inherit}
+.tab.on{color:var(--text);border-color:var(--border);background:rgba(255,255,255,.04)}
+.tab .n{font-size:11px;opacity:.7;margin-left:4px}
+.stage{height:calc(100% - 48px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 50% 18%,rgba(201,162,39,.07),transparent 55%),var(--bg);position:relative}
+.deck{position:relative;width:min(420px,92vw);height:min(480px,58vh)}
+.card{position:absolute;inset:0;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:24px;display:flex;flex-direction:column;user-select:none;will-change:transform,opacity}
+.card.peek{transform:translate(18px,10px) scale(.97);opacity:.5;z-index:1;pointer-events:none}
+.card.top{z-index:3;cursor:grab;touch-action:none}
+.card.top:active{cursor:grabbing}
+.card.fly-r{transition:transform .35s ease,opacity .35s;transform:translate(140%,-20%) rotate(14deg)!important;opacity:0!important}
+.card.fly-l{transition:transform .35s ease,opacity .35s;transform:translate(-140%,-10%) rotate(-14deg)!important;opacity:0!important}
+.card.fly-u{transition:transform .4s ease,opacity .4s;transform:translate(0,-140%) scale(.9)!important;opacity:0!important}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.badge{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid}
+.high{color:var(--high);border-color:var(--high);background:rgba(76,175,122,.12)}
+.maybe{color:var(--maybe);border-color:var(--maybe);background:rgba(201,162,39,.12)}
+.low{color:var(--low);border-color:var(--low);background:rgba(138,133,128,.12)}
+.type{color:var(--text);border-color:var(--border);background:rgba(255,255,255,.04)}
+.queued{color:var(--glow);border-color:var(--mana);background:rgba(107,92,255,.12)}
+.hydrating{color:#7ec8e3;border-color:#7ec8e3;background:rgba(126,200,227,.12)}
+.ready{color:var(--high);border-color:var(--high);background:rgba(76,175,122,.12)}
+h2{font-size:clamp(24px,5vw,32px);font-weight:650;margin-bottom:10px}
+.overview{color:var(--muted);font-size:14px;line-height:1.5;flex:1}
+.meta{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.actions{margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{min-width:120px;height:46px;border-radius:12px;border:1px solid;font:inherit;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:transparent;color:var(--text);-webkit-tap-highlight-color:transparent}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.reject{border-color:var(--reject);color:#e8a0a0;background:rgba(180,74,74,.12)}
+.btn.accept{border-color:var(--accept);color:#9ed9b8;background:rgba(61,155,106,.18)}
+.btn.mana{min-width:180px;border-color:var(--mana);color:#d4ceff;background:linear-gradient(135deg,rgba(107,92,255,.4),rgba(107,92,255,.15));box-shadow:0 0 24px rgba(107,92,255,.3)}
+.btn.ghost{border-color:var(--border);color:var(--muted)}
+.btn .k{font-size:11px;opacity:.7;border:1px solid currentColor;border-radius:4px;padding:1px 5px}
+.hint{margin-top:12px;font-size:12px;color:var(--muted);text-align:center;line-height:1.4}
+.empty{color:var(--muted);text-align:center;padding:40px 20px}
+.toast{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border);padding:8px 14px;border-radius:10px;font-size:12px;display:none;z-index:20;white-space:nowrap}
+.toast.show{display:block}
+.overlay{position:absolute;inset:0;background:rgba(8,9,13,.72);display:none;align-items:center;justify-content:center;z-index:30;padding:20px}
+.overlay.on{display:flex}
+.mana-card{width:min(300px,92vw);background:radial-gradient(ellipse at 50% 0%,rgba(107,92,255,.5),transparent 55%),linear-gradient(160deg,#2a2648,var(--panel));border:1px solid var(--glow);border-radius:20px;padding:26px 22px;text-align:center;box-shadow:0 0 60px rgba(107,92,255,.55),0 0 120px rgba(165,148,255,.25)}
+.mana-card .spark{font-size:34px;filter:drop-shadow(0 0 12px var(--glow));margin-bottom:6px}
+.mana-card h3{font-size:20px;color:var(--glow);margin-bottom:8px}
+.mana-card p{font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:14px}
+.mana-card .cost{font-size:28px;font-weight:700;margin-bottom:4px}
+.mana-card .cost span{color:var(--glow)}
+.mana-card .sub{font-size:11px;color:var(--muted);margin-bottom:18px}
+.swipe-tag{position:absolute;top:28%;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;border-radius:8px;border:2px solid;opacity:0;pointer-events:none;z-index:5;transition:opacity .1s}
+.swipe-tag.L{left:10px;color:#e8a0a0;border-color:var(--reject);transform:rotate(-12deg);background:rgba(180,74,74,.2)}
+.swipe-tag.R{right:10px;color:#9ed9b8;border-color:var(--accept);transform:rotate(12deg);background:rgba(61,155,106,.2)}
+.swipe-tag.U{top:14px;left:50%;transform:translateX(-50%);color:var(--glow);border-color:var(--mana);background:rgba(107,92,255,.25)}
+body.shot .chrome .tabs,body.shot .toast,body.shot .hint{display:none!important}
+body.shot-mana .overlay{display:flex!important}
+body.shot-hints .swipe-tag.L{opacity:.9!important}
+body.shot-hints .swipe-tag.R{opacity:.9!important}
+body.shot-hints .swipe-tag.U{opacity:.9!important}
+@media(max-width:520px){.deck{height:min(440px,62vh)}.btn{min-width:100px}}
+</style>
+</head>
+<body>
+<div class="chrome">
+  <div class="brand">LORVIA</div>
+  <div style="color:var(--muted);font-size:12px">Call from the Deep</div>
+  <div class="tabs">
+    <button class="tab on" id="tab-rail" type="button">Rail<span class="n" id="rail-n"></span></button>
+    <button class="tab" id="tab-queue" type="button">Queue<span class="n" id="queue-n"></span></button>
+    <button class="tab" id="reset-demo" type="button" title="Restore all examples">↺ Reset</button>
+  </div>
+</div>
+<div class="stage" id="stage">
+  <div class="deck" id="deck"></div>
+  <div class="actions" id="actions"></div>
+  <div class="hint" id="hint"></div>
+  <div class="toast" id="toast"></div>
+  <div class="overlay" id="overlay">
+    <div class="mana-card">
+      <div class="spark">✦</div>
+      <h3>Spend mana?</h3>
+      <p id="mana-copy">Hydrate this name into a full lore card.</p>
+      <div class="cost"><span id="mana-cost">12</span> mana</div>
+      <div class="sub">Balance after: <span id="mana-bal">2388</span> · Undo for a few seconds</div>
+      <div class="actions" style="margin-top:0">
+        <button class="btn ghost" id="mana-cancel" type="button">Cancel</button>
+        <button class="btn mana" id="mana-ok" type="button">✦ Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const RAIL0=[
+  {id:1,name:'Durnan',type:'Character',tier:'high',score:'0.91',blurb:'Gruff proprietor of The Yawning Portal. Fought in Undermountain decades ago; keeps a longsword behind the bar.',meta:'Session 12 · Waterdeep',cost:12},
+  {id:2,name:'The Yawning Portal',type:'Place',tier:'high',score:'0.88',blurb:'Famous inn built over a shaft into Undermountain. Adventurers gather here before descending.',meta:'Session 12 · Dock Ward',cost:14},
+  {id:3,name:'Golden Claw',type:'Faction',tier:'maybe',score:'0.61',blurb:'Guild mark on a crate in the Dock Ward. Possibly a smuggling ring.',meta:'Session 12',cost:10},
+  {id:4,name:'Blackstaff Tower',type:'Place',tier:'low',score:'0.34',blurb:'Mentioned once in passing by a drunk patron.',meta:'Session 12',cost:9},
+  {id:5,name:'Volo',type:'Character',tier:'maybe',score:'0.55',blurb:'A boastful chronicler offering maps of dubious accuracy.',meta:'Session 11',cost:11},
+  {id:6,name:'Xanathar',type:'Character',tier:'high',score:'0.94',blurb:'Beholder crime lord of Skullport; agents wear a distinctive eye tattoo.',meta:'Session 12 · Skullport',cost:16},
+  {id:7,name:'Skullport',type:'Place',tier:'high',score:'0.90',blurb:'Shadow port beneath Waterdeep where Xanathar\'s network thrives.',meta:'Session 12',cost:15},
+  {id:8,name:'Halaster Blackcloak',type:'Character',tier:'high',score:'0.87',blurb:'Mad mage who built Undermountain; rumors say he still walks its halls.',meta:'Session 11',cost:18},
+  {id:9,name:'Force Grey',type:'Faction',tier:'high',score:'0.85',blurb:'Blackstaff\'s covert strike team; a badge was left at the crime scene.',meta:'Session 12',cost:12},
+  {id:10,name:'Zhentarim Safehouse',type:'Place',tier:'high',score:'0.83',blurb:'Hidden cellar under a fishmonger\'s shop used for black-market deals.',meta:'Session 10 · Dock Ward',cost:13},
+  {id:11,name:'The Eye of the Deep',type:'Item',tier:'high',score:'0.86',blurb:'Pearl that whispers tide charts when held underwater.',meta:'Session 12',cost:14},
+  {id:12,name:'Undermountain Gate',type:'Place',tier:'high',score:'0.82',blurb:'Sealed arch on Level 2 that only opens under a new moon.',meta:'Session 11',cost:15},
+  {id:13,name:'Jalester Silvermane',type:'Character',tier:'high',score:'0.81',blurb:'Open Lord\'s field agent who asked the party for a quiet favor.',meta:'Session 12',cost:11},
+  {id:14,name:'Mind Flayer Colony',type:'Creature',tier:'high',score:'0.89',blurb:'Psionic hive sensed through the stone two levels down.',meta:'Session 12',cost:17},
+  {id:15,name:'The Day of Broken Chains',type:'Event',tier:'high',score:'0.80',blurb:'Anniversary riot in Skullport that emptied half the cells.',meta:'Session 10',cost:10},
+  {id:16,name:'Mirt the Moneylender',type:'Character',tier:'high',score:'0.84',blurb:'Fat, cunning ally who bankrolls expeditions into the dungeon.',meta:'Session 11',cost:12},
+  {id:17,name:'City Guard Watchpost',type:'Place',tier:'high',score:'0.80',blurb:'Castle Ward post that logged the party\'s return from below.',meta:'Session 12',cost:9},
+  {id:18,name:'Bregan D\'aerthe',type:'Faction',tier:'high',score:'0.88',blurb:'Drow mercenary company trading surface intel for gold.',meta:'Session 12',cost:14},
+  {id:19,name:'Stone of Golorr',type:'Item',tier:'maybe',score:'0.72',blurb:'Weird stone that might hold a map of a vault; authenticity unclear.',meta:'Session 11',cost:16},
+  {id:20,name:'Floon Blagmaar',type:'Character',tier:'maybe',score:'0.68',blurb:'Missing noble friend of Volo; last seen near the docks.',meta:'Session 10',cost:10},
+  {id:21,name:'The Grinning Lion',type:'Place',tier:'maybe',score:'0.64',blurb:'Tavern where a tipster wants to meet after midnight.',meta:'Session 12',cost:9},
+  {id:22,name:'Harpers Cell',type:'Faction',tier:'maybe',score:'0.70',blurb:'Coded note left in a book; may be Harper recruitment.',meta:'Session 11',cost:11},
+  {id:23,name:'Shadowdrake Whelp',type:'Creature',tier:'maybe',score:'0.58',blurb:'Small winged shape glimpsed above the shaft; could be a bat.',meta:'Session 12',cost:12},
+  {id:24,name:'Helm of Seeing',type:'Item',tier:'maybe',score:'0.66',blurb:'Rusty helm that supposedly reveals illusions; cracked lens.',meta:'Session 10',cost:13},
+  {id:25,name:'The Night of Three Crowns',type:'Event',tier:'maybe',score:'0.59',blurb:'Street festival the party overheard plans for; details fuzzy.',meta:'Session 12',cost:8},
+  {id:26,name:'Renaer Neverember',type:'Character',tier:'maybe',score:'0.74',blurb:'Disinherited noble seeking allies against his father\'s agents.',meta:'Session 11',cost:11},
+  {id:27,name:'Sewer Outfall Nine',type:'Place',tier:'maybe',score:'0.52',blurb:'Grate that smells of brine; maybe a back way into Skullport.',meta:'Session 12',cost:10},
+  {id:28,name:'Cult of the Absolute',type:'Faction',tier:'maybe',score:'0.63',blurb:'Pamphlets found in a crate; may be a red herring.',meta:'Session 10',cost:12},
+  {id:29,name:'Gibbering Mouther',type:'Creature',tier:'maybe',score:'0.57',blurb:'Wet voices in a side tunnel; scout fled before confirming.',meta:'Session 12',cost:13},
+  {id:30,name:'Lantern of Tracking',type:'Item',tier:'maybe',score:'0.51',blurb:'Oil lamp that supposedly points toward lost friends.',meta:'Session 11',cost:9},
+  {id:31,name:'Moonrise Pact',type:'Event',tier:'maybe',score:'0.55',blurb:'Secret meeting of ward captains under a full moon.',meta:'Session 12',cost:10},
+  {id:32,name:'Trollskull Manor',type:'Place',tier:'maybe',score:'0.69',blurb:'Haunted tavern the party might inherit if papers check out.',meta:'Session 11',cost:14},
+  {id:33,name:'Cassalanter Vault',type:'Place',tier:'low',score:'0.42',blurb:'Name dropped once; no confirmation it exists under the villa.',meta:'Session 10',cost:11},
+  {id:34,name:'Urstul Floxin',type:'Character',tier:'low',score:'0.38',blurb:'Zhent agent mentioned by a snitch; may already be dead.',meta:'Session 9',cost:10},
+  {id:35,name:'The Melairkyn',type:'Faction',tier:'low',score:'0.29',blurb:'Dwarf clan name carved on a wall; likely historical only.',meta:'Session 12',cost:8},
+  {id:36,name:'Cloaker Nest',type:'Creature',tier:'low',score:'0.33',blurb:'Ceiling shadow that might have been a cloak, not a monster.',meta:'Session 11',cost:12},
+  {id:37,name:'Ring of the Ram',type:'Item',tier:'low',score:'0.27',blurb:'Bargain offered by a street vendor; almost certainly fake.',meta:'Session 12',cost:9},
+  {id:38,name:'Festival of the Moon',type:'Event',tier:'low',score:'0.41',blurb:'Calendar note; no plot hook attached yet.',meta:'Session 10',cost:7},
+  {id:39,name:'Amphail Stables',type:'Place',tier:'low',score:'0.22',blurb:'Town far north of Waterdeep; only named in a travel tale.',meta:'Session 9',cost:8},
+  {id:40,name:'Nihiloor',type:'Character',tier:'low',score:'0.45',blurb:'Illithid name hissed by a dying thrall; identity unverified.',meta:'Session 12',cost:15}
+];
+let rail=RAIL0.map(x=>({...x})), queue=[], undo=null, mana=2400, view='rail', drag=null, busy=false;
+function resetDemo(){rail=RAIL0.map(x=>({...x}));queue=[];undo=null;mana=2400;busy=false;hideMana();setView('rail');toast(`Reset · ${rail.length} names`);}
+
+const $=id=>document.getElementById(id);
+const tierClass=t=>t==='high'?'high':t==='maybe'?'maybe':'low';
+const tierLabel=c=>c.tier==='high'?`High · ${c.score}`:c.tier==='maybe'?`Maybe · ${c.score}`:`Low · ${c.score}`;
+
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2200)}
+function counts(){$('rail-n').textContent=rail.length?` · ${rail.length}`:'';$('queue-n').textContent=queue.length?` · ${queue.length}`:''}
+function setView(v){view=v;$('tab-rail').classList.toggle('on',v==='rail');$('tab-queue').classList.toggle('on',v==='queue');render()}
+
+function cardEl(c,cls,extra=''){
+  const st=c.status?`<span class="badge ${c.status}">${c.status}</span>`:`<span class="badge ${tierClass(c.tier)}">${tierLabel(c)}</span>`;
+  return `<div class="card ${cls}" data-id="${c.id}">${extra}
+    <div class="badges">${st}<span class="badge type">${c.type}</span></div>
+    <h2>${c.name}</h2><p class="overview">${c.blurb||'Name + type only. No field values until hydrated.'}</p>
+    <div class="meta"><span>${c.meta||'Accepted from rail'}</span><span>${view==='rail'?'Accept → queue':(c.status||'queued')}</span></div></div>`;
+}
+
+function render(){
+  counts();
+  const list=view==='rail'?rail:queue;
+  const deck=$('deck'), act=$('actions'), hint=$('hint');
+  if(!list.length){deck.innerHTML=`<div class="empty">${view==='rail'?'Rail clear — every name reviewed.':'Queue empty — Accept names on the Rail.'}</div>`;act.innerHTML=undo?`<button class="btn ghost" id="undo-btn" type="button">↩ Undo</button>`:'';hint.textContent='A Accept · R Reject · M Mana · U Undo';wireBtns();return}
+  const top=list[0], peek=list[1];
+  const tags=view==='rail'
+    ?`<div class="swipe-tag L" id="tagL">← Reject</div><div class="swipe-tag R" id="tagR">Accept →</div>`
+    :`<div class="swipe-tag U" id="tagU">↑ Spend mana</div>`;
+  deck.innerHTML=(list[2]?cardEl(list[2],'peek'):'')+(peek?cardEl(peek,'peek'):'')+cardEl(top,'top',tags);
+  const peeks=deck.querySelectorAll('.card.peek');
+  if(peeks[0]){peeks[0].style.transform='translate(-22px,12px) scale(.96)';peeks[0].style.opacity='.42';}
+  if(peeks[1]){peeks[1].style.transform='translate(22px,12px) scale(.97)';}
+  if(view==='rail'){
+    act.innerHTML=`<button class="btn reject" id="btn-rej" type="button">✕ Reject <span class="k">R</span></button>
+      <button class="btn accept" id="btn-acc" type="button">✓ Accept <span class="k">A</span></button>`+(undo?`<button class="btn ghost" id="undo-btn" type="button">↩</button>`:'');
+    hint.textContent='Swipe right / A → queue · Swipe left / R → reject · No up on rail';
+  }else{
+    const can=top.status==='queued';
+    act.innerHTML=`<button class="btn mana" id="btn-mana" type="button" ${can?'':'disabled'}>✦ Hydrate · ${top.cost||12} mana <span class="k">M</span></button>`+(undo?`<button class="btn ghost" id="undo-btn" type="button">↩</button>`:'');
+    hint.textContent=can?'Swipe up / M / button → spend mana (confirm first)':'Waiting on hydrate… Publish/Private comes after ready';
+  }
+  wireBtns(); wireDrag();
+}
+
+function wireBtns(){
+  $('btn-acc')?.addEventListener('click',()=>decide('accept'));
+  $('btn-rej')?.addEventListener('click',()=>decide('reject'));
+  $('btn-mana')?.addEventListener('click',()=>askMana());
+  $('undo-btn')?.addEventListener('click',()=>doUndo());
+}
+
+function decide(kind){
+  if(busy||view!=='rail'||!rail[0])return;
+  busy=true;const c=rail[0], el=document.querySelector('.card.top');
+  el?.classList.add(kind==='accept'?'fly-r':'fly-l');
+  setTimeout(()=>{
+    rail=rail.slice(1);
+    if(kind==='accept'){const q={...c,status:'queued',blurb:'Name + type only. Edit type before hydrate if needed.'};queue=[q,...queue];undo={type:'accept',card:c};toast(`Accepted ${c.name} → queue`);}
+    else{undo={type:'reject',card:c};toast(`Rejected ${c.name}`);}
+    busy=false;render();
+  },320);
+}
+
+function askMana(){
+  if(busy||view!=='queue'||!queue[0]||queue[0].status!=='queued')return;
+  const c=queue[0];$('mana-copy').innerHTML=`Hydrate <b style="color:var(--text)">${c.name}</b> into a full lore card. Burns real OpenAI cost.`;
+  $('mana-cost').textContent=c.cost||12;$('mana-bal').textContent=mana-(c.cost||12);
+  $('overlay').classList.add('on');
+}
+function hideMana(){$('overlay').classList.remove('on')}
+function confirmMana(){
+  if(busy||!queue[0])return;hideMana();busy=true;
+  const c=queue[0], cost=c.cost||12, el=document.querySelector('.card.top');
+  el?.classList.add('fly-u');
+  setTimeout(()=>{
+    mana-=cost;queue[0]={...c,status:'hydrating'};undo={type:'hydrate',card:c,cost};
+    busy=false;render();toast(`−${cost} mana · hydrating ${c.name}`);
+    setTimeout(()=>{if(queue[0]?.id===c.id&&queue[0].status==='hydrating'){queue[0]={...queue[0],status:'ready',blurb:'Hydrated. Choose Publish or Private on the review deck.'};render();toast(`${c.name} ready`);}},1200);
+  },380);
+}
+
+function doUndo(){
+  if(!undo||busy)return;const u=undo;undo=null;
+  if(u.type==='accept'){queue=queue.filter(x=>x.id!==u.card.id);rail=[u.card,...rail];toast(`Undid accept · ${u.card.name}`);}
+  else if(u.type==='reject'){rail=[u.card,...rail];toast(`Undid reject · ${u.card.name}`);}
+  else if(u.type==='hydrate'){mana+=u.cost;queue=queue.map(x=>x.id===u.card.id?{...u.card,status:'queued'}:x);toast(`Undid hydrate · +${u.cost} mana`);}
+  render();
+}
+
+function wireDrag(){
+  const el=document.querySelector('.card.top');if(!el)return;
+  const start=e=>{if(busy)return;const p=e.touches?e.touches[0]:e;drag={x0:p.clientX,y0:p.clientY,x:0,y:0};};
+  const move=e=>{if(!drag)return;const p=e.touches?e.touches[0]:e;drag.x=p.clientX-drag.x0;drag.y=p.clientY-drag.y0;
+    if(view==='rail'){el.style.transform=`translate(${drag.x}px,${drag.y*0.2}px) rotate(${drag.x*0.04}deg)`;
+      const L=$('tagL'),R=$('tagR');if(L)L.style.opacity=drag.x<-40?Math.min(1,(-drag.x-40)/80):0;if(R)R.style.opacity=drag.x>40?Math.min(1,(drag.x-40)/80):0;}
+    else{el.style.transform=`translate(0,${Math.min(0,drag.y)}px)`;const U=$('tagU');if(U)U.style.opacity=drag.y<-40?Math.min(1,(-drag.y-40)/80):0;}};
+  const end=()=>{if(!drag)return;const {x,y}=drag;drag=null;el.style.transform='';
+    document.querySelectorAll('.swipe-tag').forEach(t=>t.style.opacity=0);
+    if(view==='rail'){if(x>90)decide('accept');else if(x<-90)decide('reject');}
+    else if(y<-90)askMana();};
+  el.addEventListener('pointerdown',start);window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);
+  el.addEventListener('touchstart',start,{passive:true});window.addEventListener('touchmove',move,{passive:true});window.addEventListener('touchend',end);
+}
+
+$('tab-rail').onclick=()=>setView('rail');
+$('tab-queue').onclick=()=>setView('queue');
+$('reset-demo').onclick=()=>resetDemo();
+$('mana-cancel').onclick=hideMana;
+$('mana-ok').onclick=confirmMana;
+window.addEventListener('keydown',e=>{
+  if($('overlay').classList.contains('on')){if(e.key==='Escape')hideMana();if(e.key==='Enter')confirmMana();return;}
+  const k=e.key.toLowerCase();
+  if(k==='a')decide('accept');else if(k==='r')decide('reject');else if(k==='m')askMana();else if(k==='u')doUndo();
+  else if(k==='1')setView('rail');else if(k==='2')setView('queue');
+});
+
+// URL hash for static PNG shots: #rail | #queue | #mana  (+ optional &mobile via viewport)
+function applyHash(){
+  const h=(location.hash||'#rail').slice(1);
+  document.body.classList.add('shot');
+  if(h==='mana'||h==='queue-mana-moment'){
+    // seed: one accepted into queue, show mana overlay
+    rail=RAIL0.slice(1).map(x=>({...x}));
+    queue=[{...RAIL0[0],status:'queued',blurb:'Name + type only. No field values until you spend mana.'}];
+    setView('queue');document.body.classList.add('shot-mana','shot-hints');$('overlay').classList.add('on');
+    $('mana-copy').innerHTML=`Hydrate <b style="color:var(--text)">${RAIL0[0].name}</b> into a full lore card. Burns real OpenAI cost.`;
+    $('mana-cost').textContent='12';$('mana-bal').textContent='2388';
+  }else if(h==='queue'||h==='queue-desktop'){
+    rail=RAIL0.slice(1).map(x=>({...x}));
+    queue=[{...RAIL0[0],status:'queued',blurb:'Name + type only. Edit type before hydrate if needed.'},
+           {...RAIL0[2],status:'queued',blurb:'Name + type only.'},
+           {...RAIL0[1],status:'queued',blurb:'Name + type only.'}];
+    setView('queue');
+  }else{
+    // rail / rail-desktop / rail-mobile
+    rail=RAIL0.map(x=>({...x}));queue=[];setView('rail');document.body.classList.add('shot-hints');
+  }
+}
+if(location.hash)applyHash();else render();
+</script>
+</body>
+</html>
